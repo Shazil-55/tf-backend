@@ -93,7 +93,7 @@ export class AuthService {
 
     let hashedPassword = await hashPassword(password);
 
-    // await this.db.v1.User.UpdateUser({ id: fetchedSession.userId }, { password: hashedPassword });
+    await this.db.v1.User.UpdateUser(fetchedSession.userId, { password: hashedPassword });
   }
 
   async ValidateRefreshToken(refreshToken: string): Promise<AuthModel.Tokens> {

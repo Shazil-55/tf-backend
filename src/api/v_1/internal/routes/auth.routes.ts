@@ -7,7 +7,7 @@ const authController = new AuthController();
 // Authentication routes
 router.post('/register', authController.register);
 router.post('/login', authController.login);
-router.post('/send-email', authController.sendEmail);
+router.post('/forgot-password', authController.sendEmail); // Alias for send-email for forgot password
 router.post('/reset-password', authController.resetPassword);
 // router.get('/google/url', authController.getGoogleAuthUrl);
 // router.get('/google/callback', authController.googleCallback);

@@ -28,8 +28,8 @@ export class EmailService {
         to: [{ email: email }],
         subject: `OTP Verification`,
         sender: {
-          name: 'BoilerPlate',
-          email: 'no-reply@boilerplate.com',
+          name: 'TRU-FANS',
+          email: 'no-reply@tru-fans.com',
         },
         htmlContent: modifiedHtml,
       },
