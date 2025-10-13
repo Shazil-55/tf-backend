@@ -17,7 +17,12 @@ export interface User extends DefaultTable {
   is18Plus?: boolean;
   profilePhoto?: string;
   bio?: string;
+  coverPhoto?: string;
+  introVideo?: string;
+  themeColor?: string;
+  socialLinks?: any; // JSON field
 }
+
 
 export interface verifyOtp {
   id: string;
@@ -29,4 +34,9 @@ export interface verifyOtp {
 
 export enum s3Paths {
   profilePictures = 'profile-pictures/',
+}
+
+export interface Follower extends DefaultTable {
+  userId: string;
+  followerId: string;
 }

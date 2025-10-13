@@ -49,4 +49,65 @@ export class UserController {
     }
     res.json(body);
   };
+
+  // Get all creators handler
+  public getAllCreators = async (req: Request, res: Response): Promise<void> => {
+    let body;
+    try {
+      const db = res.locals.db as Db;
+      const service = new UserService({ db });
+      const currentUserId = req.userId; // From JWT auth middleware
+      const response = await service.GetAllCreators(currentUserId);
+
+      body = {
+        data: response,
+      };
+    } catch (error) {
+      genericError(error, res);
+    }
+    res.json(body);
+  };
+
+  // Get creator by ID handler
+  public getCreatorById = async (req: Request, res: Response): Promise<void> => {
+    let body;
+    try {
+      const db = res.locals.db as Db;
+      const service = new UserService({ db });
+      const creatorId = req.params.id;
+      const currentUserId = req.userId; // From JWT auth middleware
+      const response = await service.GetCreatorById(creatorId, currentUserId);
+
+      body = {
+        data: response,
+      };
+    } catch (error) {
+      genericError(error, res);
+    }
+    res.json(body);
+  };
+
+  // Toggle follow creator handler
+  public toggleFollowCreator = async (req: Request, res: Response): Promise<void> => {
+    let body;
+    try {
+      const db = res.locals.db as Db;
+      const service = new UserService({ db });
+      const creatorId = req.params.id;
+      const followerId = req.userId; // From JWT auth middleware
+      
+      const result = await service.ToggleFollowCreator(creatorId, followerId);
+
+      body = {
+        message: `Successfully ${result.action} creator`,
+        data: {
+          action: result.action,
+          isFollowing: result.isFollowing,
+        },
+      };
+    } catch (error) {
+      genericError(error, res);
+    }
+    res.json(body);
+  };
 }

@@ -119,4 +119,132 @@ export class UserDatabase {
 
     return res[0];
   }
+
+  async GetAllCreators(): Promise<Entities.User[]> {
+    this.logger.info('Db.GetAllCreators');
+
+    const knexdb = this.GetKnex();
+
+    const query = knexdb('users').whereNotNull('pageName');
+
+    const { res, err } = await this.RunQuery(query);
+
+    if (err) {
+      this.logger.error('Db.GetAllCreators failed', err);
+      throw new AppError(400, 'Failed to fetch creators');
+    }
+
+    if (!res) {
+      this.logger.info('Db.GetAllCreators No creators found');
+      return [];
+    }
+
+    return res;
+  }
+
+  async GetAllCreatorsWithFollowStatus(currentUserId?: string): Promise<any[]> {
+    this.logger.info('Db.GetAllCreatorsWithFollowStatus', { currentUserId });
+
+    const knexdb = this.GetKnex();
+
+    let query = knexdb('users')
+      .select([
+        'users.*',
+        knexdb.raw('COUNT(followers.id) as followersCount'),
+        knexdb.raw(currentUserId ? 
+          `CASE WHEN user_follows.id IS NOT NULL THEN true ELSE false END as isFollowing` : 
+          'false as isFollowing'
+        )
+      ])
+      .leftJoin('followers', 'users.id', 'followers.userId')
+      .whereNotNull('users.pageName')
+      .groupBy('users.id');
+
+    if (currentUserId) {
+      query = query
+        .leftJoin('followers as user_follows', function() {
+          this.on('users.id', '=', 'user_follows.userId')
+              .andOn('user_follows.followerId', '=', knexdb.raw('?', [currentUserId]));
+        });
+    }
+
+    const { res, err } = await this.RunQuery(query);
+
+    if (err) {
+      this.logger.error('Db.GetAllCreatorsWithFollowStatus failed', err);
+      throw new AppError(400, 'Failed to fetch creators');
+    }
+
+    if (!res) {
+      this.logger.info('Db.GetAllCreatorsWithFollowStatus No creators found');
+      return [];
+    }
+
+    return res;
+  }
+
+  async GetCreatorByIdWithFollowStatus(creatorId: string, currentUserId?: string): Promise<any> {
+    this.logger.info('Db.GetCreatorByIdWithFollowStatus', { creatorId, currentUserId });
+
+    const knexdb = this.GetKnex();
+
+    let query = knexdb('users')
+      .select([
+        'users.*',
+        knexdb.raw('COUNT(followers.id) as followersCount'),
+        knexdb.raw(currentUserId ? 
+          `CASE WHEN user_follows.id IS NOT NULL THEN true ELSE false END as isFollowing` : 
+          'false as isFollowing'
+        )
+      ])
+      .leftJoin('followers', 'users.id', 'followers.userId')
+      .where('users.id', creatorId)
+      .whereNotNull('users.pageName')
+      .groupBy('users.id')
+      .first();
+
+    if (currentUserId) {
+      query = query
+        .leftJoin('followers as user_follows', function() {
+          this.on('users.id', '=', 'user_follows.userId')
+              .andOn('user_follows.followerId', '=', knexdb.raw('?', [currentUserId]));
+        });
+    }
+
+    const { res, err } = await this.RunQuery(query);
+
+    if (err) {
+      this.logger.error('Db.GetCreatorByIdWithFollowStatus failed', err);
+      throw new AppError(400, 'Failed to fetch creator');
+    }
+
+    return res && res.length > 0 ? res[0] : null;
+  }
+
+
+  async ToggleFollowUser(userId: string, followerId: string): Promise<{ action: 'followed' | 'unfollowed'; isFollowing: boolean }> {
+    this.logger.info('Db.ToggleFollowUser', { userId, followerId });
+
+    const knexdb = this.GetKnex();
+
+    // Check if already following
+    const existingFollow = await knexdb('followers')
+      .where({ userId, followerId })
+      .first();
+
+    if (existingFollow) {
+      // Unfollow
+      await knexdb('followers')
+        .where({ userId, followerId })
+        .del();
+      
+      return { action: 'unfollowed', isFollowing: false };
+    } else {
+      // Follow
+      await knexdb('followers')
+        .insert({ userId, followerId });
+      
+      return { action: 'followed', isFollowing: true };
+    }
+  }
 }

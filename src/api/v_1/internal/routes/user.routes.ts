@@ -11,4 +11,11 @@ router.use(jwtAuth);
 router.get('/', userController.getCurrentUser);
 router.put('/', userController.updateUser);
 
+// Creator routes
+router.get('/creators', userController.getAllCreators);
+router.get('/creators/:id', userController.getCreatorById);
+
+// Toggle Follow/Unfollow route
+router.post('/creators/:id/follow', userController.toggleFollowCreator);
+
 export { router as userRoutes };

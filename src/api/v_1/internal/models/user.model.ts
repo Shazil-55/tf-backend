@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DefaultTable } from '../../../../helpers/entities';
 
 export const CreateUserBodySchema = z.object({
   userName: z.string(),
@@ -20,6 +21,32 @@ export const UpdateUserBodySchema = z.object({
   creatorName: z.string().optional(),
   is18Plus: z.boolean().optional(),
   profilePhoto: z.string().optional(),
+  bio: z.string().optional(),
+  coverPhoto: z.string().optional(),
+  introVideo: z.string().optional(),
+  themeColor: z.string().optional(),
+  socialLinks: z.any().optional(),
 });
 
 export type UpdateUserBody = z.infer<typeof UpdateUserBodySchema>;
+
+// Response interfaces
+export interface CreatorProfile {
+  pageName: string;
+  creatorName: string;
+  is18Plus: boolean;
+  profilePhoto?: string;
+  bio?: string;
+  coverPhoto?: string;
+  introVideo?: string;
+  themeColor?: string;
+  socialLinks?: any;
+  isFollowing?: boolean;
+  followersCount?: number;
+}
+
+export interface UserResponse extends DefaultTable {
+  name: string;
+  email: string;
+  creator: CreatorProfile | null;
+}
