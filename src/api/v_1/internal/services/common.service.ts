@@ -6,14 +6,24 @@ import { Logger } from '../../../../helpers/logger';
 import { HealthStatusModel } from '../models/common.model';
 import { AwsS3Service } from '../../../../helpers/AwsS3';
 import { s3Paths } from '../../../../helpers/entities';
+import { Entities } from '../../../../helpers';
+import { Db } from '../../../../database/db';
 
 export class CommonService {
-  AwsS3Service: AwsS3Service;
+  AwsS3Service: AwsS3Service | null = null;
+  db: Db;
 
   constructor() {
     Logger.info('CommonService initialized...');
 
-    this.AwsS3Service = new AwsS3Service();
+    this.db = new Db();
+  }
+
+  private getAwsS3Service(): AwsS3Service {
+    if (!this.AwsS3Service) {
+      this.AwsS3Service = new AwsS3Service();
+    }
+    return this.AwsS3Service;
   }
 
   public GetHealthStatus(): HealthStatusModel {
@@ -26,6 +36,12 @@ export class CommonService {
     };
   }
 
+  public async GetCategories(): Promise<Entities.Category[]> {
+    Logger.info('CommonService.GetCategories');
+
+    return await this.db.v1.User.GetCategories();
+  }
+
   public async UploadImage(files: fileUpload.FileArray | null | undefined, path?: s3Paths): Promise<string> {
     Logger.info('CommonService.UploadImage');
 
@@ -33,7 +49,7 @@ export class CommonService {
 
     const file = files.fileToUpload as fileUpload.UploadedFile;
 
-    const img = await this.AwsS3Service.UploadFileToS3(file.data, file.name, path);
+    const img = await this.getAwsS3Service().UploadFileToS3(file.data, file.name, path);
 
     return img;
   }

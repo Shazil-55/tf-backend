@@ -147,26 +147,23 @@ export class UserDatabase {
 
     const knexdb = this.GetKnex();
 
-    let query = knexdb('users')
+    const query = knexdb('users')
       .select([
         'users.*',
         knexdb.raw('COUNT(followers.id) as followersCount'),
-        knexdb.raw(currentUserId ? 
-          `CASE WHEN user_follows.id IS NOT NULL THEN true ELSE false END as isFollowing` : 
-          'false as isFollowing'
-        )
+        knexdb.raw(`
+          bool_or(user_follows.id IS NOT NULL) as isFollowing
+        `)
       ])
       .leftJoin('followers', 'users.id', 'followers.userId')
+      .leftJoin('followers as user_follows', function () {
+        this.on('users.id', '=', 'user_follows.userId')
+            .andOn('user_follows.followerId', '=', knexdb.raw('?', [currentUserId]));
+      })
       .whereNotNull('users.pageName')
       .groupBy('users.id');
 
-    if (currentUserId) {
-      query = query
-        .leftJoin('followers as user_follows', function() {
-          this.on('users.id', '=', 'user_follows.userId')
-              .andOn('user_follows.followerId', '=', knexdb.raw('?', [currentUserId]));
-        });
-    }
+
 
     const { res, err } = await this.RunQuery(query);
 
@@ -188,28 +185,23 @@ export class UserDatabase {
 
     const knexdb = this.GetKnex();
 
-    let query = knexdb('users')
-      .select([
-        'users.*',
-        knexdb.raw('COUNT(followers.id) as followersCount'),
-        knexdb.raw(currentUserId ? 
-          `CASE WHEN user_follows.id IS NOT NULL THEN true ELSE false END as isFollowing` : 
-          'false as isFollowing'
-        )
-      ])
-      .leftJoin('followers', 'users.id', 'followers.userId')
-      .where('users.id', creatorId)
-      .whereNotNull('users.pageName')
-      .groupBy('users.id')
-      .first();
-
-    if (currentUserId) {
-      query = query
-        .leftJoin('followers as user_follows', function() {
-          this.on('users.id', '=', 'user_follows.userId')
-              .andOn('user_follows.followerId', '=', knexdb.raw('?', [currentUserId]));
-        });
-    }
+    const query = knexdb('users')
+    .select([
+      'users.*',
+      knexdb.raw('COUNT(followers.id) as followersCount'),
+      knexdb.raw(`
+        bool_or(user_follows.id IS NOT NULL) as isFollowing
+      `)
+    ])
+    .leftJoin('followers', 'users.id', 'followers.userId')
+    .leftJoin('followers as user_follows', function () {
+      this.on('users.id', '=', 'user_follows.userId')
+          .andOn('user_follows.followerId', '=', knexdb.raw('?', [currentUserId]));
+    })
+    .where('users.id', creatorId)
+    .whereNotNull('users.pageName')
+    .groupBy('users.id')
+    .first()
 
     const { res, err } = await this.RunQuery(query);
 
@@ -218,7 +210,9 @@ export class UserDatabase {
       throw new AppError(400, 'Failed to fetch creator');
     }
 
-    return res && res.length > 0 ? res[0] : null;
+    Logger.info('Db.GetCreatorByIdWithFollowStatus res', { res });
+
+    return res;
   }
 
 
@@ -247,4 +241,37 @@ export class UserDatabase {
       return { action: 'followed', isFollowing: true };
     }
   }
-}
+
+  async GetCategories(): Promise<Entities.Category[]> {
+    this.logger.info('Db.GetCategories');
+
+    const knexdb = this.GetKnex();
+
+    const query = knexdb('categories');
+
+    const { res, err } = await this.RunQuery(query);
+
+    if (err) {
+      this.logger.error('Db.GetCategories failed', err);
+      throw new AppError(400, 'Failed to fetch categories');
+    }
+
+    if (!res) {
+      this.logger.info('Db.GetCategories No categories found');
+      return [];
+    }
+
+    return res;
+  }
+
+  async AddCategories(categories: Entities.Category[]): Promise<void> {
+    this.logger.info('Db.AddCategories', { categories });
+
+    const knexdb = this.GetKnex();
+
+    await knexdb('categories').insert(categories);
+
+    this.logger.info('Db.AddCategories completed');
+    return;
+  }
+  }

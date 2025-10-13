@@ -21,6 +21,8 @@ export interface User extends DefaultTable {
   introVideo?: string;
   themeColor?: string;
   socialLinks?: any; // JSON field
+  tags?: string[];
+  categoryId?: string;
 }
 
 
@@ -39,4 +41,9 @@ export enum s3Paths {
 export interface Follower extends DefaultTable {
   userId: string;
   followerId: string;
+}
+
+export interface Category extends DefaultTable {
+  name: string;
+  parentId: string | null;
 }

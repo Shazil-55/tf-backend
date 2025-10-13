@@ -60,6 +60,11 @@ export class UserService {
   public async UpdateUser(userId: string, updateData: Partial<User>): Promise<void> {
     Logger.info('UserService.UpdateUser', { userId, updateData });
 
+    const {socialLinks} = updateData;
+    if (socialLinks) {
+      updateData.socialLinks = JSON.stringify(socialLinks);
+    }
+
     const updatedUser = await this.db.v1.User.UpdateUser(userId, updateData);
 
     if (!updatedUser) throw new BadRequest('User not found or update failed');
@@ -74,6 +79,7 @@ export class UserService {
     if (!creators) return [];
 
     return creators.map((creator: any) => ({
+      id: creator.id,
       pageName: creator.pageName!,
       creatorName: creator.creatorName!,
       is18Plus: creator.is18Plus || false,
@@ -85,6 +91,9 @@ export class UserService {
       socialLinks: creator.socialLinks,
       isFollowing: creator.isFollowing,
       followersCount: parseInt(creator.followersCount) || 0,
+      tags: creator.tags || ['music', 'videos', 'entertainment'],
+      category: creator.category || 'music',
+      subscribersCount: parseInt(creator.subscribersCount) || 17,
     }));
   }
 
@@ -93,23 +102,7 @@ export class UserService {
 
     const creator = await this.db.v1.User.GetCreatorByIdWithFollowStatus(creatorId, currentUserId);
 
-    if (!creator || !creator.pageName) {
-      throw new BadRequest('Creator not found');
-    }
-
-    return {
-      pageName: creator.pageName,
-      creatorName: creator.creatorName!,
-      is18Plus: creator.is18Plus || false,
-      profilePhoto: creator.profilePhoto,
-      bio: creator.bio,
-      coverPhoto: creator.coverPhoto,
-      introVideo: creator.introVideo,
-      themeColor: creator.themeColor,
-      socialLinks: creator.socialLinks,
-      isFollowing: creator.isFollowing,
-      followersCount: parseInt(creator.followersCount) || 0,
-    };
+    return creator
   }
 
   public async ToggleFollowCreator(userId: string, followerId: string): Promise<{ action: 'followed' | 'unfollowed'; isFollowing: boolean }> {

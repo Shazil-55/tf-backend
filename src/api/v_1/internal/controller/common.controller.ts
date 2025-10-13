@@ -26,6 +26,21 @@ export class CommonController {
     res.json(body);
   };
 
+  // Get categories handler
+  public getCategories = async (req: Request, res: Response): Promise<void> => {
+    let body;
+    try {
+      const service = new CommonService();
+      const response = await service.GetCategories();
+
+      body = {
+        data: response,
+      };
+    } catch (error) {
+      genericError(error, res);
+    }
+    res.json(body);
+  };  
   // Upload file handler
   public uploadFile = async (req: Request, res: Response): Promise<void> => {
     let body;

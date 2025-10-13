@@ -6,6 +6,7 @@ const commonController = new CommonController();
 
 // Health status route
 router.get('/status', commonController.getHealthStatus);
+router.get('/categories', commonController.getCategories);
 
 // File upload route
 router.post('/upload-file', commonController.uploadFile);

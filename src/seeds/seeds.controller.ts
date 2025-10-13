@@ -2,6 +2,7 @@ import { Db } from '../database/db';
 import { Env } from '../helpers';
 import { Logger } from '../helpers/logger';
 import { superCompanyAndAdminSeed } from './v_1/SuperAdmin.seed';
+import { categoriesSeed } from './v_1/Categories.seed';
 
 export class SeedsController {
   private db: Db;
@@ -26,7 +27,10 @@ export class SeedsController {
 
   private async runProdSeeds() {
     Logger.info('Seeding all seeds...');
-    const seeders = [superCompanyAndAdminSeed(this.db)];
+    const seeders = [
+      superCompanyAndAdminSeed(this.db),
+      categoriesSeed(this.db)
+    ];
     await Promise.all(seeders);
   }
 

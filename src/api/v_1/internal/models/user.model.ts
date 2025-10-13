@@ -26,6 +26,8 @@ export const UpdateUserBodySchema = z.object({
   introVideo: z.string().optional(),
   themeColor: z.string().optional(),
   socialLinks: z.any().optional(),
+  tags: z.array(z.string()).optional(),
+  categoryId: z.string().optional(),
 });
 
 export type UpdateUserBody = z.infer<typeof UpdateUserBodySchema>;
@@ -41,6 +43,8 @@ export interface CreatorProfile {
   introVideo?: string;
   themeColor?: string;
   socialLinks?: any;
+  tags?: string[];
+  categoryId?: string;
   isFollowing?: boolean;
   followersCount?: number;
 }
