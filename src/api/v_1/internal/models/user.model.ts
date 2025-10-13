@@ -47,6 +47,8 @@ export interface CreatorProfile {
   categoryId?: string;
   isFollowing?: boolean;
   followersCount?: number;
+  subscribersCount?: number;
+  category?: string;
 }
 
 export interface UserResponse extends DefaultTable {

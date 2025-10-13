@@ -51,6 +51,8 @@ export class UserService {
         introVideo: user.introVideo,
         themeColor: user.themeColor,
         socialLinks: user.socialLinks,
+        tags: user.tags,
+        categoryId: user.categoryId,
       };
     }
 
@@ -97,12 +99,116 @@ export class UserService {
     }));
   }
 
-  public async GetCreatorById(creatorId: string, currentUserId?: string): Promise<UserModels.CreatorProfile | null> {
+  public async GetCreatorById(creatorId: string, currentUserId?: string): Promise<UserModels.CreatorProfile | null | any> {
     Logger.info('UserService.GetCreatorById', { creatorId, currentUserId });
 
     const creator = await this.db.v1.User.GetCreatorByIdWithFollowStatus(creatorId, currentUserId);
 
-    return creator
+    return {
+      id: creator.id,
+      pageName: creator.pageName,
+      creatorName: creator.creatorName,
+      is18Plus: creator.is18Plus || false,
+      profilePhoto: creator.profilePhoto,
+      bio: creator.bio,
+      coverPhoto: creator.coverPhoto,
+      introVideo: creator.introVideo,
+      themeColor: creator.themeColor,
+      socialLinks: creator.socialLinks,
+      tags: creator.tags,
+      categoryId: creator.categoryId,
+      isFollowing: creator.isFollowing,
+      createdAt: creator.createdAt,
+      updatedAt: creator.updatedAt,
+      followersCount: parseInt(creator.followersCount) || 0,
+      subscribersCount: parseInt(creator.subscribersCount) || 17,
+      category: creator.category || 'music',
+      totalPosts: parseInt(creator.totalPosts) || 0,
+      memberships:[
+        {
+          id: '1',
+          name: 'Free',
+          price: 0,
+          currency: 'NGN',
+        },
+        {
+          id: '2',
+          name: 'Subscription',
+          price: 9.99,
+          currency: 'NGN',
+        },
+      ],
+      recentPosts: [
+        {
+          id:  '1',
+          title:  'Title 1',
+          createdAt: new Date().toISOString(),
+          public:  true,
+          totalLikes:  10,
+          totalComments: 10,
+        },
+        {
+          id: '2',
+          title: 'Title 2',
+          public:  false,
+          createdAt:  new Date().toISOString(),
+          totalLikes:  15,
+          totalComments:  15,
+        },
+        {
+          id:  '3',
+          title:  'Title 3',
+          createdAt: new Date().toISOString(),
+          public:  true,
+          totalLikes:  10,
+          totalComments: 10,
+        },
+        {
+          id: '4',
+          title: 'Title 4',
+          public:  false,
+          createdAt:  new Date().toISOString(),
+          totalLikes:  15,
+          totalComments:  15,
+        },
+      
+      ],
+      exploreOthers: [
+        {
+          id:  '1',
+          title:  'Title 1',
+          createdAt: new Date().toISOString(),
+          public:  true,
+          totalLikes:  10,
+          totalComments: 10,
+        },
+        {
+          id: '2',
+          title: 'Title 2',
+          public:  false,
+          createdAt:  new Date().toISOString(),
+          totalLikes:  15,
+          totalComments:  15,
+        },
+        {
+          id:  '3',
+          title:  'Title 3',
+          createdAt: new Date().toISOString(),
+          public:  true,
+          totalLikes:  10,
+          totalComments: 10,
+        },
+        {
+          id: '4',
+          title: 'Title 4',
+          public:  false,
+          createdAt:  new Date().toISOString(),
+          totalLikes:  15,
+          totalComments:  15,
+        },
+      
+      ]
+    }
   }
 
   public async ToggleFollowCreator(userId: string, followerId: string): Promise<{ action: 'followed' | 'unfollowed'; isFollowing: boolean }> {
