@@ -87,6 +87,25 @@ export class UserController {
     res.json(body);
   };
 
+  // Get creator by pageName handler
+  public getCreatorByPageName = async (req: Request, res: Response): Promise<void> => {
+    let body;
+    try {
+      const db = res.locals.db as Db;
+      const service = new UserService({ db });
+      const pageName = req.params.pageName;
+      const currentUserId = req.userId; // From JWT auth middleware
+      const response = await service.GetCreatorByPageName(pageName, currentUserId);
+
+      body = {
+        data: response,
+      };
+    } catch (error) {
+      genericError(error, res);
+    }
+    res.json(body);
+  };
+
   // Toggle follow creator handler
   public toggleFollowCreator = async (req: Request, res: Response): Promise<void> => {
     let body;

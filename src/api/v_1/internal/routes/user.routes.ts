@@ -14,6 +14,7 @@ router.put('/', userController.updateUser);
 // Creator routes
 router.get('/creators', userController.getAllCreators);
 router.get('/creator/:id', userController.getCreatorById);
+router.get('/creator/page/:pageName', userController.getCreatorByPageName);
 
 // Toggle Follow/Unfollow route
 router.post('/creators/:id/follow', userController.toggleFollowCreator);

@@ -161,6 +161,7 @@ export class UserDatabase {
             .andOn('user_follows.followerId', '=', knexdb.raw('?', [currentUserId]));
       })
       .whereNotNull('users.pageName')
+      // .andWhereNot('users.id', knexdb.raw('?', [currentUserId]))
       .groupBy('users.id');
 
 
@@ -176,6 +177,8 @@ export class UserDatabase {
       this.logger.info('Db.GetAllCreatorsWithFollowStatus No creators found');
       return [];
     }
+
+    
 
     return res;
   }
@@ -215,6 +218,40 @@ export class UserDatabase {
     return res;
   }
 
+  async GetCreatorByPageNameWithFollowStatus(pageName: string, currentUserId?: string): Promise<any> {
+    this.logger.info('Db.GetCreatorByPageNameWithFollowStatus', { pageName, currentUserId });
+
+    const knexdb = this.GetKnex();
+
+    const query = knexdb('users')
+    .select([
+      'users.*',
+      knexdb.raw('COUNT(followers.id) as followersCount'),
+      knexdb.raw(`
+        bool_or(user_follows.id IS NOT NULL) as isFollowing
+      `)
+    ])
+    .leftJoin('followers', 'users.id', 'followers.userId')
+    .leftJoin('followers as user_follows', function () {
+      this.on('users.id', '=', 'user_follows.userId')
+          .andOn('user_follows.followerId', '=', knexdb.raw('?', [currentUserId]));
+    })
+    .where('users.pageName', pageName)
+    .whereNotNull('users.pageName')
+    .groupBy('users.id')
+    .first()
+
+    const { res, err } = await this.RunQuery(query);
+
+    if (err) {
+      this.logger.error('Db.GetCreatorByPageNameWithFollowStatus failed', err);
+      throw new AppError(400, 'Failed to fetch creator');
+    }
+
+    Logger.info('Db.GetCreatorByPageNameWithFollowStatus res', { res });
+
+    return res;
+  }
 
   async ToggleFollowUser(userId: string, followerId: string): Promise<{ action: 'followed' | 'unfollowed'; isFollowing: boolean }> {
     this.logger.info('Db.ToggleFollowUser', { userId, followerId });

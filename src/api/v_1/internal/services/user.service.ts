@@ -73,7 +73,7 @@ export class UserService {
 
   }
 
-  public async GetAllCreators(currentUserId?: string): Promise<UserModels.CreatorProfile[]> {
+  public async GetAllCreators(currentUserId?: string): Promise<UserModels.CreatorProfile[] |any > {
     Logger.info('UserService.GetAllCreators', { currentUserId });
 
     const creators = await this.db.v1.User.GetAllCreatorsWithFollowStatus(currentUserId);
@@ -103,6 +103,122 @@ export class UserService {
     Logger.info('UserService.GetCreatorById', { creatorId, currentUserId });
 
     const creator = await this.db.v1.User.GetCreatorByIdWithFollowStatus(creatorId, currentUserId);
+
+    return {
+      id: creator.id,
+      pageName: creator.pageName,
+      creatorName: creator.creatorName,
+      is18Plus: creator.is18Plus || false,
+      profilePhoto: creator.profilePhoto,
+      bio: creator.bio,
+      coverPhoto: creator.coverPhoto,
+      introVideo: creator.introVideo,
+      themeColor: creator.themeColor,
+      socialLinks: creator.socialLinks,
+      tags: creator.tags,
+      categoryId: creator.categoryId,
+      isFollowing: creator.isfollowing,
+      createdAt: creator.createdAt,
+      updatedAt: creator.updatedAt,
+      followersCount: parseInt(creator.followersCount) || 0,
+      subscribersCount: parseInt(creator.subscribersCount) || 17,
+      category: creator.category || 'music',
+      totalPosts: parseInt(creator.totalPosts) || 0,
+      memberships:[
+        {
+          id: '1',
+          name: 'Free',
+          price: 0,
+          currency: 'NGN',
+        },
+        {
+          id: '2',
+          name: 'Subscription',
+          price: 9.99,
+          currency: 'NGN',
+        },
+      ],
+      recentPosts: [
+        {
+          id:  '1',
+          title:  'Title 1',
+          createdAt: new Date().toISOString(),
+          public:  true,
+          totalLikes:  10,
+          totalComments: 10,
+        },
+        {
+          id: '2',
+          title: 'Title 2',
+          public:  false,
+          createdAt:  new Date().toISOString(),
+          totalLikes:  15,
+          totalComments:  15,
+        },
+        {
+          id:  '3',
+          title:  'Title 3',
+          createdAt: new Date().toISOString(),
+          public:  true,
+          totalLikes:  10,
+          totalComments: 10,
+        },
+        {
+          id: '4',
+          title: 'Title 4',
+          public:  false,
+          createdAt:  new Date().toISOString(),
+          totalLikes:  15,
+          totalComments:  15,
+        },
+      
+      ],
+      exploreOthers: [
+        {
+          id:  '1',
+          title:  'Title 1',
+          createdAt: new Date().toISOString(),
+          public:  true,
+          totalLikes:  10,
+          totalComments: 10,
+        },
+        {
+          id: '2',
+          title: 'Title 2',
+          public:  false,
+          createdAt:  new Date().toISOString(),
+          totalLikes:  15,
+          totalComments:  15,
+        },
+        {
+          id:  '3',
+          title:  'Title 3',
+          createdAt: new Date().toISOString(),
+          public:  true,
+          totalLikes:  10,
+          totalComments: 10,
+        },
+        {
+          id: '4',
+          title: 'Title 4',
+          public:  false,
+          createdAt:  new Date().toISOString(),
+          totalLikes:  15,
+          totalComments:  15,
+        },
+      
+      ]
+    }
+  }
+
+  public async GetCreatorByPageName(pageName: string, currentUserId?: string): Promise<UserModels.CreatorProfile | null | any> {
+    Logger.info('UserService.GetCreatorByPageName', { pageName, currentUserId });
+
+    const creator = await this.db.v1.User.GetCreatorByPageNameWithFollowStatus(pageName, currentUserId);
+
+    if (!creator) {
+      throw new BadRequest('Creator not found');
+    }
 
     return {
       id: creator.id,
