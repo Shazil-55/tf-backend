@@ -19,4 +19,11 @@ router.get('/creator/page/:pageName', userController.getCreatorByPageName);
 // Toggle Follow/Unfollow route
 router.post('/creators/:id/follow', userController.toggleFollowCreator);
 
+// Posts CRUD
+router.post('/posts', userController.createPost);
+router.get('/posts', userController.getAllPosts);
+router.get('/posts/:id', userController.getPostById);
+router.put('/posts/:id', userController.updatePost);
+router.delete('/posts/:id', userController.deletePost);
+
 export { router as userRoutes };

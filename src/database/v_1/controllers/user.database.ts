@@ -311,4 +311,96 @@ export class UserDatabase {
     this.logger.info('Db.AddCategories completed');
     return;
   }
+  
+  // Posts
+  async CreatePost(
+    post: Partial<Entities.Post>,
+    mediaFiles?: Array<Partial<Entities.PostMediaFile>>,
+  ): Promise<string> {
+    this.logger.info('Db.CreatePost', { post });
+    const knexdb = this.GetKnex();
+
+    return await knexdb.transaction(async (trx) => {
+      const insertPost = trx('posts').insert(post, 'id');
+      const { res: postRes, err: postErr } = await this.RunQuery(insertPost);
+      if (postErr || !postRes || postRes.length !== 1) {
+        throw new AppError(400, 'Post not created');
+      }
+      const { id: postId } = postRes[0];
+
+      if (mediaFiles && mediaFiles.length > 0) {
+        const rows = mediaFiles.map((m) => ({ ...m, postId }));
+        const insertMedia = trx('postsMediaFiles').insert(rows);
+        const { err: mediaErr } = await this.RunQuery(insertMedia);
+        if (mediaErr) throw new AppError(400, 'Post media not created');
+      }
+
+      return postId as string;
+    });
   }
+
+  async ReplacePostMedia(postId: string, mediaFiles: Array<Partial<Entities.PostMediaFile>>): Promise<void> {
+    const knexdb = this.GetKnex();
+    await knexdb.transaction(async (trx) => {
+      await trx('postsMediaFiles').where({ postId }).del();
+      if (mediaFiles.length > 0) {
+        const rows = mediaFiles.map((m) => ({ ...m, postId }));
+        await trx('postsMediaFiles').insert(rows);
+      }
+    });
+  }
+
+  async UpdatePost(postId: string, updateData: Partial<Entities.Post>): Promise<Entities.Post | null> {
+    this.logger.info('Db.UpdatePost', { postId, updateData });
+    const knexdb = this.GetKnex();
+    const query = knexdb('posts').where({ id: postId }).update(updateData).returning('*');
+    const { res, err } = await this.RunQuery(query);
+    if (err) throw new AppError(400, 'Post update failed');
+    if (!res || res.length !== 1) return null;
+    return res[0] as Entities.Post;
+  }
+
+  async DeletePost(postId: string): Promise<void> {
+    this.logger.info('Db.DeletePost', { postId });
+    const knexdb = this.GetKnex();
+    const query = knexdb('posts').where({ id: postId }).del();
+    const { err } = await this.RunQuery(query);
+    if (err) throw new AppError(400, 'Post delete failed');
+  }
+
+  async GetPostById(postId: string): Promise<any | null> {
+    const knexdb = this.GetKnex();
+    const postQuery = knexdb('posts').where({ id: postId }).first();
+    const { res: postRes, err: postErr } = await this.RunQuery(postQuery);
+    if (postErr) throw new AppError(400, 'Failed to fetch post');
+    if (!postRes || postRes.length === 0) return null;
+    const post = postRes[0];
+
+    const mediaQuery = knexdb('postsMediaFiles').where({ postId });
+    const { res: mediaRes, err: mediaErr } = await this.RunQuery(mediaQuery);
+    if (mediaErr) throw new AppError(400, 'Failed to fetch post media');
+
+    return { ...post, mediaFiles: mediaRes ?? [] };
+  }
+
+  async GetAllPostsByCreator(creatorId: string): Promise<any[]> {
+    const knexdb = this.GetKnex();
+    const query = knexdb('posts')
+      .leftJoin('postComments', 'posts.id', 'postComments.postId')
+      .where('posts.creatorId', creatorId)
+      .groupBy('posts.id')
+      .select([
+        'posts.id',
+        'posts.title',
+        'posts.createdAt',
+        'posts.accessType',
+        'posts.totalLikes',
+        knexdb.raw('COUNT("postComments".id) as "totalComments"'),
+      ])
+      .orderBy('posts.createdAt', 'desc');
+
+    const { res, err } = await this.RunQuery(query);
+    if (err) throw new AppError(400, 'Failed to fetch posts');
+    return res ?? [];
+  }
+}

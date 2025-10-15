@@ -2,6 +2,7 @@ import { Db } from '../../../../database/db';
 import { AppError, BadRequest } from '../../../../helpers/errors';
 import { Logger } from '../../../../helpers/logger';
 import { Entities, Hash } from '../../../../helpers';
+import * as PostModel from '../models/post.model';
 import * as UserModels from '../models/user.model';
 import * as AuthModel from '../models/auth.model';
 import { User } from '../../../../helpers/entities';
@@ -342,5 +343,79 @@ export class UserService {
     }
 
     return await this.db.v1.User.ToggleFollowUser(userId, followerId);
+  }
+
+  // Posts CRUD
+  public async CreatePost(creatorId: string, body: PostModel.CreatePostBody): Promise<string> {
+    Logger.info('UserService.CreatePost', { creatorId, body: { ...body, content: '[omitted]' } });
+    const post: Partial<Entities.Post> = {
+      creatorId,
+      title: body.title,
+      content: body.content,
+      accessType: body.accessType ?? 'free',
+      tags: body.tags,
+    };
+    const mediaFiles = body.mediaFiles?.map((m) => ({
+      type: m.type,
+      url: m.url,
+      name: m.name,
+      size: m.size,
+    }));
+    const id = await this.db.v1.User.CreatePost(post, mediaFiles);
+    return id;
+  }
+
+  public async UpdatePost(postId: string, body: PostModel.UpdatePostBody): Promise<Entities.Post | null> {
+    Logger.info('UserService.UpdatePost', { postId, body: { ...body, content: '[omitted]' } });
+    const updated = await this.db.v1.User.UpdatePost(postId, body as Partial<Entities.Post>);
+    if (body.mediaFiles) {
+      const mediaFiles = body.mediaFiles.map((m) => ({ type: m.type, url: m.url, name: m.name, size: m.size }));
+      await this.db.v1.User.ReplacePostMedia(postId, mediaFiles);
+    }
+    return updated;
+  }
+
+  public async DeletePost(postId: string): Promise<void> {
+    Logger.info('UserService.DeletePost', { postId });
+    await this.db.v1.User.DeletePost(postId);
+  }
+
+  public async GetAllPosts(creatorId: string): Promise<PostModel.PostListItem[]> {
+    Logger.info('UserService.GetAllPosts', { creatorId });
+    const rows = await this.db.v1.User.GetAllPostsByCreator(creatorId);
+    return rows.map((r: any) => ({
+      id: r.id,
+      title: r.title,
+      createdAt: r.createdAt,
+      public: (r.accessType || 'free') === 'free',
+      totalLikes: parseInt(r.totalLikes) || 0,
+      totalComments: parseInt(r.totalComments) || 0,
+    }));
+  }
+
+  public async GetPostById(postId: string): Promise<PostModel.PostDetail | null> {
+    Logger.info('UserService.GetPostById', { postId });
+    const row = await this.db.v1.User.GetPostById(postId);
+    if (!row) return null;
+    return {
+      id: row.id,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      creatorId: row.creatorId,
+      title: row.title,
+      content: row.content,
+      accessType: row.accessType,
+      tags: row.tags,
+      totalLikes: parseInt(row.totalLikes) || 0,
+      mediaFiles: (row.mediaFiles || []).map((m: any) => ({
+        id: m.id,
+        type: m.type,
+        url: m.url,
+        name: m.name,
+        size: m.size,
+        createdAt: m.createdAt,
+        updatedAt: m.updatedAt,
+      })),
+    };
   }
 }

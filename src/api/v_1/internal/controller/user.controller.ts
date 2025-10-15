@@ -7,6 +7,7 @@ import { UserService } from '../services/user.service';
 import { Entities, Hash } from '../../../../helpers';
 import { jwtAuth } from '../middlewares/api-auth';
 import * as UserModel from '../models/user.model';
+import * as PostModel from '../models/post.model';
 
 export class UserController {
   constructor() {
@@ -124,6 +125,80 @@ export class UserController {
           isFollowing: result.isFollowing,
         },
       };
+    } catch (error) {
+      genericError(error, res);
+    }
+    res.json(body);
+  };
+
+  // Posts
+  public createPost = async (req: RequestBody<PostModel.CreatePostBody>, res: Response): Promise<void> => {
+    let body;
+    try {
+      await PostModel.CreatePostBodySchema.parseAsync(req.body);
+      const db = res.locals.db as Db;
+      const service = new UserService({ db });
+      const creatorId = req.userId;
+      const id = await service.CreatePost(creatorId, req.body);
+
+      body = { data: { id } };
+    } catch (error) {
+      genericError(error, res);
+    }
+    res.json(body);
+  };
+
+  public updatePost = async (req: RequestBody<PostModel.UpdatePostBody>, res: Response): Promise<void> => {
+    let body;
+    try {
+      await PostModel.UpdatePostBodySchema.parseAsync(req.body);
+      const db = res.locals.db as Db;
+      const service = new UserService({ db });
+      const postId = req.params.id;
+      const row = await service.UpdatePost(postId, req.body);
+      body = { data: row };
+    } catch (error) {
+      genericError(error, res);
+    }
+    res.json(body);
+  };
+
+  public deletePost = async (req: Request, res: Response): Promise<void> => {
+    let body;
+    try {
+      const db = res.locals.db as Db;
+      const service = new UserService({ db });
+      const postId = req.params.id;
+      await service.DeletePost(postId);
+      body = { message: 'Post deleted' };
+    } catch (error) {
+      genericError(error, res);
+    }
+    res.json(body);
+  };
+
+  public getAllPosts = async (req: Request, res: Response): Promise<void> => {
+    let body;
+    try {
+      const db = res.locals.db as Db;
+      const service = new UserService({ db });
+      const creatorId = req.userId;
+      const rows = await service.GetAllPosts(creatorId);
+      body = { data: rows };
+    } catch (error) {
+      genericError(error, res);
+    }
+    res.json(body);
+  };
+
+  public getPostById = async (req: Request, res: Response): Promise<void> => {
+    let body;
+    try {
+      const db = res.locals.db as Db;
+      const service = new UserService({ db });
+      const postId = req.params.id;
+      const row = await service.GetPostById(postId);
+      body = { data: row };
     } catch (error) {
       genericError(error, res);
     }
