@@ -104,6 +104,7 @@ export class UserService {
     Logger.info('UserService.GetCreatorById', { creatorId, currentUserId });
 
     const creator = await this.db.v1.User.GetCreatorByIdWithFollowStatus(creatorId, currentUserId);
+    const recentPosts = await this.db.v1.User.GetRecentPostsByCreator(creatorId);
 
     return {
       id: creator.id,
@@ -139,41 +140,14 @@ export class UserService {
           currency: 'NGN',
         },
       ],
-      recentPosts: [
-        {
-          id:  '1',
-          title:  'Title 1',
-          createdAt: new Date().toISOString(),
-          public:  true,
-          totalLikes:  10,
-          totalComments: 10,
-        },
-        {
-          id: '2',
-          title: 'Title 2',
-          public:  false,
-          createdAt:  new Date().toISOString(),
-          totalLikes:  15,
-          totalComments:  15,
-        },
-        {
-          id:  '3',
-          title:  'Title 3',
-          createdAt: new Date().toISOString(),
-          public:  true,
-          totalLikes:  10,
-          totalComments: 10,
-        },
-        {
-          id: '4',
-          title: 'Title 4',
-          public:  false,
-          createdAt:  new Date().toISOString(),
-          totalLikes:  15,
-          totalComments:  15,
-        },
-      
-      ],
+      recentPosts: recentPosts.map((post: any) => ({
+        id: post.id,
+        title: post.title,
+        createdAt: post.createdAt,
+        public: (post.accessType || 'free') === 'free',
+        totalLikes: parseInt(post.totalLikes) || 0,
+        totalComments: parseInt(post.totalComments) || 0,
+      })),
       exploreOthers: [
         {
           id:  '1',
@@ -216,7 +190,7 @@ export class UserService {
     Logger.info('UserService.GetCreatorByPageName', { pageName, currentUserId });
 
     const creator = await this.db.v1.User.GetCreatorByPageNameWithFollowStatus(pageName, currentUserId);
-
+    const recentPosts = await this.db.v1.User.GetRecentPostsByCreator(creator.id);
     if (!creator) {
       throw new BadRequest('Creator not found');
     }
@@ -255,41 +229,14 @@ export class UserService {
           currency: 'NGN',
         },
       ],
-      recentPosts: [
-        {
-          id:  '1',
-          title:  'Title 1',
-          createdAt: new Date().toISOString(),
-          public:  true,
-          totalLikes:  10,
-          totalComments: 10,
-        },
-        {
-          id: '2',
-          title: 'Title 2',
-          public:  false,
-          createdAt:  new Date().toISOString(),
-          totalLikes:  15,
-          totalComments:  15,
-        },
-        {
-          id:  '3',
-          title:  'Title 3',
-          createdAt: new Date().toISOString(),
-          public:  true,
-          totalLikes:  10,
-          totalComments: 10,
-        },
-        {
-          id: '4',
-          title: 'Title 4',
-          public:  false,
-          createdAt:  new Date().toISOString(),
-          totalLikes:  15,
-          totalComments:  15,
-        },
-      
-      ],
+      recentPosts: recentPosts.map((post: any) => ({
+        id: post.id,
+        title: post.title,
+        createdAt: post.createdAt,
+        public: (post.accessType || 'free') === 'free',
+        totalLikes: parseInt(post.totalLikes) || 0,
+        totalComments: parseInt(post.totalComments) || 0,
+      })),
       exploreOthers: [
         {
           id:  '1',
@@ -386,23 +333,60 @@ export class UserService {
     await this.db.v1.User.DeletePost(postId);
   }
 
-  public async GetAllPosts(userId: string): Promise<PostModel.PostListItem[]> {
+  public async GetAllPosts(userId: string): Promise<any[]> {
     Logger.info('UserService.GetAllPosts', { userId });
+
+// Three types of POSTS
+// 1. Paid Posts membership based
+// 2. Posts by followed creators
+// 3. Free Posts By Other Creators 
+
+// 1. Paid Posts membership based
+
+// 2. Posts by followed creators
     const rows = await this.db.v1.User.GetAllPostsByFollowedCreator(userId);
+
+// 3. Free Posts By Other Creators 
+
+
+
     return rows.map((r: any) => ({
-      id: r.id,
-      title: r.title,
+      postId: r.postId,
+      postTitle: r.postTitle,
+      content: this.stripHtmlAndTruncate(r.content, 100),
       createdAt: r.createdAt,
-      public: (r.accessType || 'free') === 'free',
+      tags: r.tags || [],
+      attachedMedia: r.attachedMedia || [],
+      creatorId: r.creatorId,
+      creatorImage: r.creatorImage,
+      pageName: r.pageName,
       totalLikes: parseInt(r.totalLikes) || 0,
       totalComments: parseInt(r.totalComments) || 0,
     }));
   }
 
-  public async GetPostById(postId: string): Promise<PostModel.PostDetail | null> {
-    Logger.info('UserService.GetPostById', { postId });
+  private stripHtmlAndTruncate(content: string, maxLength: number): string {
+    if (!content) return '';
+    
+    // Remove HTML tags
+    const stripped = content.replace(/<[^>]*>/g, '');
+    
+    // Remove extra whitespace and newlines
+    const cleaned = stripped.replace(/\s+/g, ' ').trim();
+    
+    // Truncate to maxLength
+    if (cleaned.length <= maxLength) {
+      return cleaned;
+    }
+    
+    return cleaned.substring(0, maxLength) + '...';
+  }
+
+  public async GetPostById(postId: string, userId: string): Promise<any | null> {
+    Logger.info('UserService.GetPostById', { postId, userId });
     const row = await this.db.v1.User.GetPostById(postId);
     if (!row) return null;
+    
     return {
       id: row.id,
       createdAt: row.createdAt,
@@ -413,6 +397,9 @@ export class UserService {
       accessType: row.accessType,
       tags: row.tags,
       totalLikes: parseInt(row.totalLikes) || 0,
+      creatorName: row.creatorName,
+      creatorImage: row.creatorImage,
+      categoryName: row.categoryName,
       mediaFiles: (row.mediaFiles || []).map((m: any) => ({
         id: m.id,
         type: m.type,
@@ -421,6 +408,15 @@ export class UserService {
         size: m.size,
         createdAt: m.createdAt,
         updatedAt: m.updatedAt,
+      })),
+      comments: (row.comments || []).map((c: any) => ({
+        id: c.id,
+        comment: c.comment,
+        createdAt: c.createdAt,
+        updatedAt: c.updatedAt,
+        userId: c.userId,
+        userName: c.userName,
+        userImage: c.userImage,
       })),
     };
   }

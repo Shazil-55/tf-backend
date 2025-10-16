@@ -197,7 +197,7 @@ export class UserController {
       const db = res.locals.db as Db;
       const service = new UserService({ db });
       const postId = req.params.id;
-      const row = await service.GetPostById(postId);
+      const row = await service.GetPostById(postId, req.userId);
       body = { data: row };
     } catch (error) {
       genericError(error, res);

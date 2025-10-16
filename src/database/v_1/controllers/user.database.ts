@@ -370,36 +370,110 @@ export class UserDatabase {
 
   async GetPostById(postId: string): Promise<any | null> {
     const knexdb = this.GetKnex();
-    const postQuery = knexdb('posts').where({ id: postId }).first();
+    
+    // Get post with creator info
+    const postQuery = knexdb('posts')
+      .leftJoin('users', 'posts.creatorId', 'users.id')
+      .leftJoin('categories', 'users.categoryId', 'categories.id')
+      .where('posts.id', postId)
+      .select([
+        'posts.*',
+        'users.name as creatorName',
+        'users.profilePhoto as creatorImage',
+        'categories.name as categoryName'
+      ])
+    
     const { res: postRes, err: postErr } = await this.RunQuery(postQuery);
     if (postErr) throw new AppError(400, 'Failed to fetch post');
     if (!postRes || postRes.length === 0) return null;
     const post = postRes[0];
 
+    // Get media files
     const mediaQuery = knexdb('postsMediaFiles').where({ postId });
     const { res: mediaRes, err: mediaErr } = await this.RunQuery(mediaQuery);
     if (mediaErr) throw new AppError(400, 'Failed to fetch post media');
 
-    return { ...post, mediaFiles: mediaRes ?? [] };
+    // Get comments with user info, ordered by most recent
+    const commentsQuery = knexdb('postComments')
+      .leftJoin('users', 'postComments.userId', 'users.id')
+      .where('postComments.postId', postId)
+      .select([
+        'postComments.*',
+        'users.name as userName',
+        'users.profilePhoto as userImage'
+      ])
+      .orderBy('postComments.createdAt', 'desc');
+    
+    const { res: commentsRes, err: commentsErr } = await this.RunQuery(commentsQuery);
+    if (commentsErr) throw new AppError(400, 'Failed to fetch post comments');
+
+    return { 
+      ...post, 
+      mediaFiles: mediaRes ?? [],
+      comments: commentsRes ?? []
+    };
   }
 
   public async GetAllPostsByFollowedCreator(userId: string): Promise<any[]> {
     const knexdb = this.GetKnex();
-  
+   
     const query = knexdb('posts')
       .leftJoin('postComments', 'posts.id', 'postComments.postId')
+      .leftJoin('postsMediaFiles', 'posts.id', 'postsMediaFiles.postId')
       .innerJoin('followers', 'posts.creatorId', 'followers.userId') // userId = creator
+      .innerJoin('users', 'posts.creatorId', 'users.id') // Get creator info
       .where('followers.followerId', userId) // followerId = viewer
       .where('posts.accessType', 'free')
-      .select(
-        'posts.*',
-        'followers.followerId',
-        'postComments.comment'
-      )
+      .groupBy([
+        'posts.id',
+        'posts.title',
+        'posts.content',
+        'posts.createdAt',
+        'posts.tags',
+        'posts.totalLikes',
+        'users.id',
+        'users.profilePhoto'
+      ])
+      .select([
+        'posts.id as postId',
+        'posts.title as postTitle',
+        'posts.content',
+        'posts.createdAt',
+        'posts.tags',
+        'posts.totalLikes',
+        'posts.creatorId',
+        'users.profilePhoto as creatorImage',
+        'users.pageName as pageName',
+        knexdb.raw('COUNT(DISTINCT "postComments".id) as "totalComments"'),
+        knexdb.raw('ARRAY_AGG(DISTINCT "postsMediaFiles".url) FILTER (WHERE "postsMediaFiles".url IS NOT NULL) as "attachedMedia"')
+      ])
       .orderBy('posts.createdAt', 'desc');
   
     const { res, err } = await this.RunQuery(query);
     if (err) throw new AppError(400, 'Failed to fetch posts');
+    return res ?? [];
+  }
+
+  async GetRecentPostsByCreator(creatorId: string): Promise<any[]> {
+    this.logger.info('Db.GetRecentPostsByCreator', { creatorId });
+
+    const knexdb = this.GetKnex();
+    const query = knexdb('posts')
+      .leftJoin('postComments', 'posts.id', 'postComments.postId')
+      .where('posts.creatorId', creatorId)
+      .groupBy('posts.id')
+      .select([
+        'posts.id',
+        'posts.title',
+        'posts.createdAt',
+        'posts.accessType',
+        'posts.totalLikes',
+        knexdb.raw('COUNT("postComments".id) as "totalComments"'),
+      ])
+      .orderBy('posts.createdAt', 'desc');
+
+    const { res, err } = await this.RunQuery(query);
+    if (err) throw new AppError(400, 'Failed to fetch recent posts');
     return res ?? [];
   }
 
