@@ -25,13 +25,13 @@ export class AwsS3Service {
     const uploadParams: PutObjectCommandInput = {
       Bucket: Env.AWS.BUCKET_NAME,
       Body: file,
-      Key: fileName,
-      ACL: 'public-read',
+      Key: fileName
     };
 
     await this.S3.send(new PutObjectCommand(uploadParams));
 
-    const fileUrl = `${Env.AWS.CLOUDFRONT_DOMAIN}/${fileName}`;
+    const fileUrl = `https://${Env.AWS.BUCKET_NAME}.s3.${Env.AWS.REGION}.amazonaws.com/${fileName}`;
+
 
     return fileUrl;
   }

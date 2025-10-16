@@ -70,3 +70,11 @@ export interface PostComment extends DefaultTable {
   userId: string;
   comment: string;
 }
+
+export interface Membership extends DefaultTable {
+  creatorId: string;
+  name: string;
+  price: string;
+  currency: string;
+  description?: string;
+}

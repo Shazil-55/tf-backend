@@ -4,7 +4,7 @@ function up(knex: Knex) {
   return knex.schema.createTable('memberships', (t) => {
     t.uuid('id').unique().defaultTo(knex.raw('gen_random_uuid()')).primary();
     t.uuid('creatorId').unique().references('id').inTable('users').notNullable();
-    t.string('name').notNullable();
+    t.string('name').notNullable().defaultTo('Monthly');
     t.string('price').notNullable();
     t.string('currency').notNullable().defaultTo('NGN');
     t.string('description' , 2000).nullable();

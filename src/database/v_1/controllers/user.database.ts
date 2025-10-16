@@ -383,24 +383,112 @@ export class UserDatabase {
     return { ...post, mediaFiles: mediaRes ?? [] };
   }
 
-  async GetAllPostsByCreator(creatorId: string): Promise<any[]> {
+  public async GetAllPostsByFollowedCreator(userId: string): Promise<any[]> {
     const knexdb = this.GetKnex();
+  
     const query = knexdb('posts')
       .leftJoin('postComments', 'posts.id', 'postComments.postId')
-      .where('posts.creatorId', creatorId)
-      .groupBy('posts.id')
-      .select([
-        'posts.id',
-        'posts.title',
-        'posts.createdAt',
-        'posts.accessType',
-        'posts.totalLikes',
-        knexdb.raw('COUNT("postComments".id) as "totalComments"'),
-      ])
+      .innerJoin('followers', 'posts.creatorId', 'followers.userId') // userId = creator
+      .where('followers.followerId', userId) // followerId = viewer
+      .where('posts.accessType', 'free')
+      .select(
+        'posts.*',
+        'followers.followerId',
+        'postComments.comment'
+      )
       .orderBy('posts.createdAt', 'desc');
-
+  
     const { res, err } = await this.RunQuery(query);
     if (err) throw new AppError(400, 'Failed to fetch posts');
     return res ?? [];
+  }
+
+  // Membership CRUD methods
+  async CreateMembership(membership: Partial<Entities.Membership>): Promise<string> {
+    this.logger.info('Db.CreateMembership', { membership });
+
+    const knexdb = this.GetKnex();
+    const query = knexdb('memberships').insert(membership, 'id');
+    const { res, err } = await this.RunQuery(query);
+
+    if (err) {
+      this.logger.error('Db.CreateMembership failed', err);
+      throw new AppError(400, 'Membership not created');
+    }
+
+    if (!res || res.length !== 1) {
+      this.logger.info('Db.CreateMembership Membership not created', err);
+      throw new AppError(400, 'Membership not created');
+    }
+
+    const { id } = res[0];
+    return id;
+  }
+
+  async GetMembershipById(membershipId: string): Promise<Entities.Membership | null> {
+    this.logger.info('Db.GetMembershipById', { membershipId });
+
+    const knexdb = this.GetKnex();
+    const query = knexdb('memberships').where({ id: membershipId });
+    const { res, err } = await this.RunQuery(query);
+
+    if (err) {
+      this.logger.error('Db.GetMembershipById failed', err);
+      throw new AppError(400, 'Failed to fetch membership');
+    }
+
+    if (!res || res.length === 0) {
+      return null;
+    }
+
+    return res[0];
+  }
+
+  async GetMembershipsByCreator(creatorId: string): Promise<Entities.Membership[]> {
+    this.logger.info('Db.GetMembershipsByCreator', { creatorId });
+
+    const knexdb = this.GetKnex();
+    const query = knexdb('memberships').where({ creatorId }).orderBy('createdAt', 'desc');
+    const { res, err } = await this.RunQuery(query);
+
+    if (err) {
+      this.logger.error('Db.GetMembershipsByCreator failed', err);
+      throw new AppError(400, 'Failed to fetch memberships');
+    }
+
+    return res ?? [];
+  }
+
+  async UpdateMembership(membershipId: string, updateData: Partial<Entities.Membership>): Promise<Entities.Membership | null> {
+    this.logger.info('Db.UpdateMembership', { membershipId, updateData });
+
+    const knexdb = this.GetKnex();
+    const query = knexdb('memberships').where({ id: membershipId }).update(updateData).returning('*');
+    const { res, err } = await this.RunQuery(query);
+
+    if (err) {
+      this.logger.error('Db.UpdateMembership failed', err);
+      throw new AppError(400, 'Membership update failed');
+    }
+
+    if (!res || res.length !== 1) {
+      this.logger.info('Db.UpdateMembership Membership not found or not updated', err);
+      return null;
+    }
+
+    return res[0];
+  }
+
+  async DeleteMembership(membershipId: string): Promise<void> {
+    this.logger.info('Db.DeleteMembership', { membershipId });
+
+    const knexdb = this.GetKnex();
+    const query = knexdb('memberships').where({ id: membershipId }).del();
+    const { err } = await this.RunQuery(query);
+
+    if (err) {
+      this.logger.error('Db.DeleteMembership failed', err);
+      throw new AppError(400, 'Membership delete failed');
+    }
   }
 }

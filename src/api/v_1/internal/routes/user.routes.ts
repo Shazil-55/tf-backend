@@ -26,4 +26,11 @@ router.get('/posts/:id', userController.getPostById);
 router.put('/posts/:id', userController.updatePost);
 router.delete('/posts/:id', userController.deletePost);
 
+// Membership CRUD
+router.post('/memberships', userController.createMembership);
+router.get('/memberships', userController.getMemberships);
+router.get('/memberships/:id', userController.getMembershipById);
+router.put('/memberships/:id', userController.updateMembership);
+router.delete('/memberships/:id', userController.deleteMembership);
+
 export { router as userRoutes };

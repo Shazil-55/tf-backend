@@ -182,8 +182,8 @@ export class UserController {
     try {
       const db = res.locals.db as Db;
       const service = new UserService({ db });
-      const creatorId = req.userId;
-      const rows = await service.GetAllPosts(creatorId);
+      const userId = req.userId;
+      const rows = await service.GetAllPosts(userId);
       body = { data: rows };
     } catch (error) {
       genericError(error, res);
@@ -199,6 +199,82 @@ export class UserController {
       const postId = req.params.id;
       const row = await service.GetPostById(postId);
       body = { data: row };
+    } catch (error) {
+      genericError(error, res);
+    }
+    res.json(body);
+  };
+
+  // Membership CRUD handlers
+  public createMembership = async (req: RequestBody<UserModel.CreateMembershipBody>, res: Response): Promise<void> => {
+    let body;
+    try {
+      await UserModel.CreateMembershipBodySchema.parseAsync(req.body);
+      const db = res.locals.db as Db;
+      const service = new UserService({ db });
+      const creatorId = req.userId;
+      const id = await service.CreateMembership(creatorId, req.body);
+
+      body = { data: { id } };
+    } catch (error) {
+      genericError(error, res);
+    }
+    res.json(body);
+  };
+
+  public getMemberships = async (req: Request, res: Response): Promise<void> => {
+    let body;
+    try {
+      const db = res.locals.db as Db;
+      const service = new UserService({ db });
+      const creatorId = req.userId;
+      const memberships = await service.GetMembershipsByCreator(creatorId);
+      body = { data: memberships };
+    } catch (error) {
+      genericError(error, res);
+    }
+    res.json(body);
+  };
+
+  public getMembershipById = async (req: Request, res: Response): Promise<void> => {
+    let body;
+    try {
+      const db = res.locals.db as Db;
+      const service = new UserService({ db });
+      const membershipId = req.params.id;
+      const membership = await service.GetMembershipById(membershipId);
+      body = { data: membership };
+    } catch (error) {
+      genericError(error, res);
+    }
+    res.json(body);
+  };
+
+  public updateMembership = async (req: RequestBody<UserModel.UpdateMembershipBody>, res: Response): Promise<void> => {
+    let body;
+    try {
+      await UserModel.UpdateMembershipBodySchema.parseAsync(req.body);
+      const db = res.locals.db as Db;
+      const service = new UserService({ db });
+      const membershipId = req.params.id;
+      const creatorId = req.userId;
+      const membership = await service.UpdateMembership(membershipId, creatorId, req.body);
+      body = { data: membership };
+    } catch (error) {
+      genericError(error, res);
+    }
+    res.json(body);
+  };
+
+  public deleteMembership = async (req: Request, res: Response): Promise<void> => {
+    let body;
+    try {
+      const db = res.locals.db as Db;
+      const service = new UserService({ db });
+      const membershipId = req.params.id;
+      const creatorId = req.userId;
+      await service.DeleteMembership(membershipId, creatorId);
+      body = { message: 'Membership deleted successfully' };
     } catch (error) {
       genericError(error, res);
     }

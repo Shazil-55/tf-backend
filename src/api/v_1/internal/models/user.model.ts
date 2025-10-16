@@ -56,3 +56,31 @@ export interface UserResponse extends DefaultTable {
   email: string;
   creator: CreatorProfile | null;
 }
+
+// Membership schemas
+export const CreateMembershipBodySchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  price: z.string().min(1, 'Price is required'),
+  currency: z.string().min(1, 'Currency is required').default('NGN'),
+  description: z.string().optional(),
+});
+
+export type CreateMembershipBody = z.infer<typeof CreateMembershipBodySchema>;
+
+export const UpdateMembershipBodySchema = z.object({
+  name: z.string().min(1, 'Name is required').optional(),
+  price: z.string().min(1, 'Price is required').optional(),
+  currency: z.string().min(1, 'Currency is required').optional(),
+  description: z.string().optional(),
+});
+
+export type UpdateMembershipBody = z.infer<typeof UpdateMembershipBodySchema>;
+
+// Membership response interface
+export interface MembershipResponse extends DefaultTable {
+  creatorId: string;
+  name: string;
+  price: string;
+  currency: string;
+  description?: string;
+}

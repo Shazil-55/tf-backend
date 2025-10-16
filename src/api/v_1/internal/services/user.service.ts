@@ -348,6 +348,12 @@ export class UserService {
   // Posts CRUD
   public async CreatePost(creatorId: string, body: PostModel.CreatePostBody): Promise<string> {
     Logger.info('UserService.CreatePost', { creatorId, body: { ...body, content: '[omitted]' } });
+
+    const creator = await this.db.v1.User.GetUser({ id: creatorId });
+    if (!creator || !creator.pageName) {
+      throw new BadRequest('You do not have permission for this action');
+    }
+
     const post: Partial<Entities.Post> = {
       creatorId,
       title: body.title,
@@ -380,9 +386,9 @@ export class UserService {
     await this.db.v1.User.DeletePost(postId);
   }
 
-  public async GetAllPosts(creatorId: string): Promise<PostModel.PostListItem[]> {
-    Logger.info('UserService.GetAllPosts', { creatorId });
-    const rows = await this.db.v1.User.GetAllPostsByCreator(creatorId);
+  public async GetAllPosts(userId: string): Promise<PostModel.PostListItem[]> {
+    Logger.info('UserService.GetAllPosts', { userId });
+    const rows = await this.db.v1.User.GetAllPostsByFollowedCreator(userId);
     return rows.map((r: any) => ({
       id: r.id,
       title: r.title,
@@ -417,5 +423,95 @@ export class UserService {
         updatedAt: m.updatedAt,
       })),
     };
+  }
+
+  // Membership CRUD methods with creator validation
+  public async CreateMembership(creatorId: string, body: any): Promise<string> {
+    Logger.info('UserService.CreateMembership', { creatorId, body });
+
+    // Check if user is a creator
+    const creator = await this.db.v1.User.GetUser({ id: creatorId });
+    if (!creator || !creator.pageName) {
+      throw new BadRequest('You do not have permission for this action. Only creators can create memberships.');
+    }
+
+    const membership: Partial<Entities.Membership> = {
+      creatorId,
+      name: body.name,
+      price: body.price,
+      currency: body.currency || 'NGN',
+      description: body.description,
+    };
+
+    const id = await this.db.v1.User.CreateMembership(membership);
+    return id;
+  }
+
+  public async GetMembershipsByCreator(creatorId: string): Promise<Entities.Membership[]> {
+    Logger.info('UserService.GetMembershipsByCreator', { creatorId });
+
+    // Check if user is a creator
+    const creator = await this.db.v1.User.GetUser({ id: creatorId });
+    if (!creator || !creator.pageName) {
+      throw new BadRequest('You do not have permission for this action. Only creators can view memberships.');
+    }
+
+    return await this.db.v1.User.GetMembershipsByCreator(creatorId);
+  }
+
+  public async GetMembershipById(membershipId: string): Promise<Entities.Membership | null> {
+    Logger.info('UserService.GetMembershipById', { membershipId });
+    return await this.db.v1.User.GetMembershipById(membershipId);
+  }
+
+  public async UpdateMembership(membershipId: string, creatorId: string, body: any): Promise<Entities.Membership | null> {
+    Logger.info('UserService.UpdateMembership', { membershipId, creatorId, body });
+
+    // Check if user is a creator
+    const creator = await this.db.v1.User.GetUser({ id: creatorId });
+    if (!creator || !creator.pageName) {
+      throw new BadRequest('You do not have permission for this action. Only creators can update memberships.');
+    }
+
+    // Check if membership belongs to this creator
+    const membership = await this.db.v1.User.GetMembershipById(membershipId);
+    if (!membership) {
+      throw new BadRequest('Membership not found');
+    }
+
+    if (membership.creatorId !== creatorId) {
+      throw new BadRequest('You do not have permission to update this membership.');
+    }
+
+    const updateData: Partial<Entities.Membership> = {
+      name: body.name,
+      price: body.price,
+      currency: body.currency,
+      description: body.description,
+    };
+
+    return await this.db.v1.User.UpdateMembership(membershipId, updateData);
+  }
+
+  public async DeleteMembership(membershipId: string, creatorId: string): Promise<void> {
+    Logger.info('UserService.DeleteMembership', { membershipId, creatorId });
+
+    // Check if user is a creator
+    const creator = await this.db.v1.User.GetUser({ id: creatorId });
+    if (!creator || !creator.pageName) {
+      throw new BadRequest('You do not have permission for this action. Only creators can delete memberships.');
+    }
+
+    // Check if membership belongs to this creator
+    const membership = await this.db.v1.User.GetMembershipById(membershipId);
+    if (!membership) {
+      throw new BadRequest('Membership not found');
+    }
+
+    if (membership.creatorId !== creatorId) {
+      throw new BadRequest('You do not have permission to delete this membership.');
+    }
+
+    await this.db.v1.User.DeleteMembership(membershipId);
   }
 }
